@@ -63,6 +63,8 @@ def do_stuff():
                             agent.load_model_from_file(s)
                     case 'gc':
                         gc.collect()
+                    case 'exit':
+                        break
             except KeyboardInterrupt:
                 print('Round interrupted')
                 agent.reset_env()

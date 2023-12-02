@@ -3,6 +3,7 @@ import numpy as np
 import gymnasium as gym
 import random
 import tqdm
+import pickle
 class ReplayBuffer:
     def __init__(self, capacity: int):
         self.capacity = capacity
@@ -23,7 +24,8 @@ class DQN:
     def __init__(self, env: gym.Env):
         self.model = tf.keras.models.Sequential([
             tf.keras.layers.Dense(32, activation='relu', input_dim=env.observation_space.shape[0]),
-            tf.keras.layers.Dense(32, activation='relu'),
+            tf.keras.layers.Dense(16, activation='relu'),
+            tf.keras.layers.Dense(16, activation='relu'),
             tf.keras.layers.Dense(env.action_space.n, activation='linear')
         ])
         self.model.compile(optimizer='adam', loss='mse')
@@ -33,7 +35,7 @@ class DQN:
         self.epsilon = 1.0
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
-        self.gamma = 0.995
+        self.gamma = 0.999
         self.samples_per_train = 1
         self.steps_per_train = 50
         self.batch_size = 500
@@ -83,7 +85,6 @@ class DQN:
             if self.buffer.size() >= self.batch_size: # nested for branch prediction efficiency
                 if i % self.steps_per_train == 0:
                     self.train_network()
-                    self.decay_epsilon()
         self.reset_env()
     
     def train_network(self):
@@ -99,7 +100,7 @@ class DQN:
             if not done:
                 target += self.gamma * np.amax(next_q_values[i])
             targets[i, action] = target
-        self.model.fit(states, targets, epochs=1, verbose=0)
+        self.model.fit(states, targets, epochs=1,batch_size=50, verbose=0)
 
     def train(self, iterations = 1000):
         for i in tqdm.tqdm(range(0, iterations)):
@@ -113,5 +114,20 @@ class DQN:
     def save_model(self, path):
         self.model.save(path)
 
+
+        f = open(path[:path.rfind('/') + 1] + 'model_epsilon_' + path[path.rfind('/') + 1:path.rfind('.')] + '.txt', encoding='utf-8', mode='w')
+        f.write(str(self.epsilon))
+        f.close()
+
+        f = open(path[:path.rfind('/') + 1] + 'model_buffer_' + path[path.rfind('/') + 1:path.rfind('.')] + '.pickle', mode='wb')
+        pickle.dump(self.buffer, f)
+        f.close()
+
     def load_model_from_file(self, path):
         self.model = tf.keras.models.load_model(path)
+        f = open(path[:path.rfind('/') + 1] + 'model_epsilon_' + path[path.rfind('/') + 1:path.rfind('.')] + '.txt', encoding='utf-8', mode='r')
+        self.epsilon = float(f.read())
+        f.close()
+        f = open(path[:path.rfind('/') + 1] + 'model_buffer_' + path[path.rfind('/') + 1:path.rfind('.')] + '.pickle',  mode='rb')
+        self.buffer = pickle.load(f)
+        f.close()
