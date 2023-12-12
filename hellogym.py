@@ -70,7 +70,11 @@ def do_stuff():
                 agent.reset_env()
         except KeyboardInterrupt:
             print('Interrupted')
+            env.close()
+            train_env.close()
             sys.exit(0)
+    env.close()
+    train_env.close()
 
 
 if __name__ == '__main__':

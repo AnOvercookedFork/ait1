@@ -19,26 +19,25 @@ class ReplayBuffer:
     
     def sample(self, batch_size):
         return random.sample(self.buffer, min(len(self.buffer), batch_size))
-
+    
 class DQN:
     def __init__(self, env: gym.Env):
         self.model = tf.keras.models.Sequential([
             tf.keras.layers.Dense(32, activation='relu', input_dim=env.observation_space.shape[0]),
-            tf.keras.layers.Dense(16, activation='relu'),
-            tf.keras.layers.Dense(16, activation='relu'),
+            tf.keras.layers.Dense(32, activation='relu'),
             tf.keras.layers.Dense(env.action_space.n, activation='linear')
         ])
         self.model.compile(optimizer='adam', loss='mse')
 
-        self.buffer = ReplayBuffer(10000)
+        self.buffer = ReplayBuffer(25000)
 
         self.epsilon = 1.0
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
-        self.gamma = 0.999
+        self.gamma = 0.99
         self.samples_per_train = 1
         self.steps_per_train = 50
-        self.batch_size = 500
+        self.batch_size = 1000
         self.step_penalty = 0
 
         self.env = env
@@ -77,15 +76,18 @@ class DQN:
         return reward
 
     def run_iteration(self, inference = False):
-        for i in range(0, 5000):
+        cum_reward = 0
+        for i in range(0, 50000):
             if not self.done:
-                self.run_step(inference)
+                cum_reward += self.run_step(inference)
             else:
                 break
             if self.buffer.size() >= self.batch_size: # nested for branch prediction efficiency
                 if i % self.steps_per_train == 0:
                     self.train_network()
         self.reset_env()
+        if inference:
+            print(f'Cumulative reward is {cum_reward}')
     
     def train_network(self):
         # print('training...')
@@ -112,13 +114,15 @@ class DQN:
             self.run_iteration()
 
     def save_model(self, path):
+        # save model
         self.model.save(path)
 
-
+        # save epsilon
         f = open(path[:path.rfind('/') + 1] + 'model_epsilon_' + path[path.rfind('/') + 1:path.rfind('.')] + '.txt', encoding='utf-8', mode='w')
         f.write(str(self.epsilon))
         f.close()
 
+        # save replay buffer
         f = open(path[:path.rfind('/') + 1] + 'model_buffer_' + path[path.rfind('/') + 1:path.rfind('.')] + '.pickle', mode='wb')
         pickle.dump(self.buffer, f)
         f.close()
