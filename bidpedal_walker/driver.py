@@ -10,8 +10,8 @@ def main():
     do_stuff()
 
 def do_stuff():
-    env = gym.make("LunarLander-v2", render_mode="human")
-    train_env = gym.make('LunarLander-v2')
+    env = gym.make("BipedalWalker", render_mode="human")
+    train_env = gym.make('BipedalWalker ')
     agent = dqn.DQN(train_env)
     while True:
         try:
